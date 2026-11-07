@@ -106,6 +106,8 @@
                 </select>
                 <button class="btn-action" onclick="openCreateTabModal()">➕ Tạo Tab Mới</button>
                 <button class="btn-action" onclick="moveTabToFirst()" style="background: #8e44ad;">⬆️ Đưa Tab lên đầu</button>
+                <button class="btn-action" onclick="downloadTab()" style="background: #2980b9;">⬇️ Tải Tab</button>
+                <button class="btn-action" onclick="deleteTab()" style="background: #c0392b;">🗑️ Xóa Tab</button>
                 <button class="btn-action" onclick="openChangePassModal()" style="background: #27ae60;">🔑 Đổi mật khẩu</button>
             </div>
         </div>
@@ -172,7 +174,7 @@
 
     <script>
         // Gắn cứng URL Web App mới nhất của thầy
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw5O19_hIS6FFNxtqy0TpGQjATQx57IpGo7iiByeW14BxNDXIKJv_fc24eCCgfxY66p0g/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7HnHZUXwaAG2dBsInlhbmLoJNaPPg0De3SUHZpxPauAQH3FHEFMSQ-dY5n_hA0NKiHA/exec";
         const CONFIG_SHEET_ID = '1pWxfmmAc04IJCCaj-tzPJjjfgaM-NcHrVeSgrx0kL6I'; 
         
         let currentSeatId = '';
@@ -381,6 +383,66 @@
                 document.getElementById('loading').style.display = 'none';
                 alert('Đã đổi mật khẩu phòng thành công!');
             } catch (error) { console.error(error); }
+        }
+
+        async function downloadTab() {
+            let tabName = document.getElementById('tab-selector').value;
+            if (!tabName) return alert('Chưa chọn Tab!');
+            try {
+                document.getElementById('loading').style.display = 'block';
+                let response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'export_tab', tabName: tabName })
+                });
+                let result = await response.json();
+                document.getElementById('loading').style.display = 'none';
+                if (result.status !== 'success') return alert(`⚠️ ${result.message}`);
+
+                // Dựng file CSV (có BOM để Excel đọc đúng tiếng Việt)
+                let csv = result.rows.map(row =>
+                    row.map(cell => '"' + String(cell === null ? '' : cell).replace(/"/g, '""') + '"').join(',')
+                ).join('\r\n');
+                let blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                let a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = tabName.replace(/[\\/:*?"<>|]/g, '_') + '.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loading').style.display = 'none';
+                alert('❌ Lỗi khi tải Tab!');
+            }
+        }
+
+        async function deleteTab() {
+            let tabName = document.getElementById('tab-selector').value;
+            if (!tabName) return alert('Chưa chọn Tab!');
+            if (!confirm(`⚠️ Xóa vĩnh viễn Tab "${tabName}" khỏi Google Sheet?\nHành động này KHÔNG thể hoàn tác!`)) return;
+            if (!confirm(`Xác nhận lần cuối: xóa Tab "${tabName}"?`)) return;
+            try {
+                document.getElementById('loading').style.display = 'block';
+                let response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'delete_tab', tabName: tabName })
+                });
+                let result = await response.json();
+                document.getElementById('loading').style.display = 'none';
+                if (result.status === 'success') {
+                    alert(`✅ Đã xóa Tab "${tabName}"!`);
+                    fetchInitialData();
+                } else {
+                    alert(`⚠️ ${result.message}`);
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loading').style.display = 'none';
+                alert('❌ Lỗi khi xóa Tab!');
+            }
         }
 
         async function moveTabToFirst() {
