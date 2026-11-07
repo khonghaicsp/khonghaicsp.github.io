@@ -1,4 +1,3 @@
-<!-- DiemdanhGVV3 code ngay 20261102 -->
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -106,6 +105,7 @@
                     <option value="">Đang tải danh sách Tab...</option>
                 </select>
                 <button class="btn-action" onclick="openCreateTabModal()">➕ Tạo Tab Mới</button>
+                <button class="btn-action" onclick="moveTabToFirst()" style="background: #8e44ad;">⬆️ Đưa Tab lên đầu</button>
                 <button class="btn-action" onclick="openChangePassModal()" style="background: #27ae60;">🔑 Đổi mật khẩu</button>
             </div>
         </div>
@@ -172,7 +172,7 @@
 
     <script>
         // Gắn cứng URL Web App mới nhất của thầy
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbze9HVaq5O-r5NBKSYyAplJ6KdaK3K1xpfDpCHCbfDnYfLG8QMGAP0tp9CIfTAlauhZvA/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw5O19_hIS6FFNxtqy0TpGQjATQx57IpGo7iiByeW14BxNDXIKJv_fc24eCCgfxY66p0g/exec";
         const CONFIG_SHEET_ID = '1pWxfmmAc04IJCCaj-tzPJjjfgaM-NcHrVeSgrx0kL6I'; 
         
         let currentSeatId = '';
@@ -381,6 +381,31 @@
                 document.getElementById('loading').style.display = 'none';
                 alert('Đã đổi mật khẩu phòng thành công!');
             } catch (error) { console.error(error); }
+        }
+
+        async function moveTabToFirst() {
+            let tabName = document.getElementById('tab-selector').value;
+            if (!tabName) return alert('Chưa chọn Tab!');
+            if (!confirm(`Đưa Tab "${tabName}" lên vị trí đầu tiên trong Google Sheet?`)) return;
+            try {
+                document.getElementById('loading').style.display = 'block';
+                let response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'move_tab_first', tabName: tabName })
+                });
+                let result = await response.json();
+                document.getElementById('loading').style.display = 'none';
+                if (result.status === 'success') {
+                    alert(`✅ Đã đưa Tab "${tabName}" lên đầu!`);
+                    fetchInitialData(tabName);
+                } else {
+                    alert(`⚠️ ${result.message}`);
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loading').style.display = 'none';
+            }
         }
 
         async function submitCreateTab() {
